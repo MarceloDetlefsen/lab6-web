@@ -12,8 +12,11 @@
     <ul id="messages"></ul>
 
     <footer>
-        <textarea id="message" placeholder="Escribe tu mensaje..."></textarea>
-        <button id="send">Send</button>
+        <textarea id="message" placeholder="Escribe tu mensaje..." maxlength="140" rows="1"></textarea>
+        <span class="char-count" id="char-count">140</span>
+        <button id="send">
+            <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+        </button>
     </footer>
 
     <script src="script.js"></script>
