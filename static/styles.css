@@ -80,6 +80,7 @@ li.theirs {
     border-radius: 16px;
     font-size: 14px;
     line-height: 1.5;
+    min-width: 48px;
 }
 
 li.mine .msg-bubble {

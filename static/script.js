@@ -124,6 +124,7 @@ const getMessages = async () => {
 
     ul.innerHTML = '';
     for (const message of messages) {
+        if (!message.text || !message.text.trim()) continue;
         ul.appendChild(renderMessage(message, () => {
             if (wasAtBottom) ul.scrollTop = ul.scrollHeight;
         }));
