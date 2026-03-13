@@ -9,11 +9,70 @@ textarea.addEventListener('input', () => {
     charCount.classList.toggle('warn', remaining <= 20);
 });
 
-const isImageUrl = (text) => {
-    return /^https?:\/\/\S+\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(text.trim());
+const IMAGE_RE = /^https?:\/\/\S+\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i;
+const URL_RE = /https?:\/\/[^\s]+/;
+
+const isImageUrl = (text) => IMAGE_RE.test(text.trim());
+const extractUrl = (text) => {
+    const match = text.match(URL_RE);
+    return match ? match[0] : null;
 };
 
-const renderMessage = (message) => {
+const previewCache = {};
+
+const fetchPreview = async (url) => {
+    if (previewCache[url] !== undefined) return previewCache[url];
+    previewCache[url] = null;
+    try {
+        const res = await fetch('/api/preview?url=' + encodeURIComponent(url));
+        const data = await res.json();
+        previewCache[url] = data;
+        return data;
+    } catch {
+        return null;
+    }
+};
+
+const renderLinkPreview = (data, url) => {
+    const card = document.createElement('a');
+    card.href = url;
+    card.target = '_blank';
+    card.rel = 'noopener noreferrer';
+    card.className = 'link-preview';
+
+    if (data.image) {
+        const img = document.createElement('img');
+        img.src = data.image;
+        img.alt = '';
+        card.appendChild(img);
+    }
+
+    const info = document.createElement('div');
+    info.className = 'link-preview-info';
+
+    const domain = document.createElement('span');
+    domain.className = 'link-preview-domain';
+    try { domain.textContent = new URL(url).hostname; } catch { domain.textContent = url; }
+
+    const title = document.createElement('strong');
+    title.className = 'link-preview-title';
+    title.textContent = data.title || url;
+
+    info.appendChild(domain);
+    info.appendChild(title);
+
+    if (data.description) {
+        const desc = document.createElement('p');
+        desc.className = 'link-preview-desc';
+        desc.textContent = data.description;
+        info.appendChild(desc);
+    }
+
+    card.appendChild(info);
+    return card;
+};
+
+const renderMessage = (message, onPreviewLoaded) => {
     const li = document.createElement('li');
     const isMine = message.user === username;
     li.className = isMine ? 'mine' : 'theirs';
@@ -21,16 +80,9 @@ const renderMessage = (message) => {
     const name = document.createElement('span');
     name.className = 'msg-name';
     name.textContent = message.user;
-
-    const bubble = document.createElement('div');
-    bubble.className = 'msg-bubble';
-    bubble.textContent = message.text;
-
     li.appendChild(name);
-    li.appendChild(bubble);
 
     if (isImageUrl(message.text)) {
-        bubble.textContent = '';
         const preview = document.createElement('div');
         preview.className = 'img-preview';
         const img = document.createElement('img');
@@ -38,6 +90,22 @@ const renderMessage = (message) => {
         img.alt = 'imagen';
         preview.appendChild(img);
         li.appendChild(preview);
+        return li;
+    }
+
+    const bubble = document.createElement('div');
+    bubble.className = 'msg-bubble';
+    bubble.textContent = message.text;
+    li.appendChild(bubble);
+
+    const url = extractUrl(message.text);
+    if (url && !isImageUrl(url)) {
+        fetchPreview(url).then((data) => {
+            if (data && (data.title || data.image)) {
+                li.appendChild(renderLinkPreview(data, url));
+                if (onPreviewLoaded) onPreviewLoaded();
+            }
+        });
     }
 
     return li;
@@ -56,14 +124,13 @@ const getMessages = async () => {
 
     ul.innerHTML = '';
     for (const message of messages) {
-        ul.appendChild(renderMessage(message));
+        ul.appendChild(renderMessage(message, () => {
+            if (wasAtBottom) ul.scrollTop = ul.scrollHeight;
+        }));
     }
 
     lastMessageCount = messages.length;
-
-    if (wasAtBottom) {
-        ul.scrollTop = ul.scrollHeight;
-    }
+    if (wasAtBottom) ul.scrollTop = ul.scrollHeight;
 };
 
 const postMessage = async (message) => {
