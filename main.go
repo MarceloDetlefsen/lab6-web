@@ -1,35 +1,31 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 )
 
-type Message struct {
-	ID   int    `json:"id"`
-	User string `json:"user"`
-	Text string `json:"text"`
-}
-
-var messages = []Message{}
+var chatAPi = "https://framework.dennisaldana.com/"
 
 func getMessages(w http.ResponseWriter, r *http.Request) {
-	json.NewEncoder(w).Encode(messages)
+	resp, _ := http.Get(chatAPi + "messages")
+
+	io.Copy(w, resp.Body)
 }
 
 func postMessage(w http.ResponseWriter, r *http.Request) {
-	var msg Message
-	json.NewDecoder(r.Body).Decode(&msg)
+	resp, _ := http.Post(chatAPi+"messages", "application/json", r.Body)
+	defer resp.Body.Close()
 
-	messages = append(messages, msg)
-	json.NewEncoder(w).Encode(messages)
+	io.Copy(w, resp.Body)
 }
 
 func main() {
-	http.HandleFunc("GET /messages", getMessages)
-	http.HandleFunc("POST /messages", postMessage)
+	http.Handle("GET /", http.FileServer(http.Dir("./static")))
+	http.HandleFunc("GET /api/messages", getMessages)
+	http.HandleFunc("POST /api/messages", postMessage)
 
-	fmt.Println("Chat API listening on 0.0.0:3000")
-	http.ListenAndServe(":3000", nil)
+	fmt.Println("Servidor iniciado en http://localhost:8000")
+	http.ListenAndServe("0.0.0.0:8000", nil)
 }
