@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-var chatAPi = "https://framework.dennisaldana.com/"
+var chatAPi = "https://chat.joelsiervas.online/"
 
 func getMessages(w http.ResponseWriter, r *http.Request) {
 	resp, _ := http.Get(chatAPi + "messages")
